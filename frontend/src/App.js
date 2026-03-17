@@ -9,7 +9,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 
 // ─── CONFIGURATION ────────────────────────────────────────────────────────
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL;
 const RAZORPAY_KEY = process.env.REACT_APP_RAZORPAY_KEY;
 
 const firebaseConfig = {
