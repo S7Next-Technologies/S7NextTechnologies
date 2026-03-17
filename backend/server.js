@@ -22,11 +22,26 @@ const PORT = process.env.PORT || 5000;
 // ═══════════════════════════════════════════════════════════════════════════
 
 const app = express();
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+
+const app = express();
+
+// ⭐ ADD THIS CODE ⭐
 app.use(cors({
-  origin: ["http://localhost:3000", "https://localhost:3000"],
-  methods: ['GET','POST','PUT','DELETE'],
-  credentials: true
+  origin: [
+    'https://create-react-r82fz6tpy-sitakuchibhatla-gmailcoms-projects.vercel.app',
+    'http://localhost:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.use(express.json());
+
+// Your routes go here...
 
 // Initialize Services
 if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'dummy-key') {
