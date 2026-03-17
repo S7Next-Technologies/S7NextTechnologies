@@ -3,9 +3,9 @@
 // Copy this entire file as your server.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
@@ -21,10 +21,7 @@ const PORT = process.env.PORT || 5000;
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════
 
-const app = express();
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+
 
 const app = express();
 
