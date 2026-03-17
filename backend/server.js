@@ -16,13 +16,17 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-
+const PORT = process.env.PORT || 5000;
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+app.use(cors({
+  origin: ["http://localhost:3000", "https://localhost:3000"],
+  methods: ['GET','POST','PUT','DELETE'],
+  credentials: true
+}));
 
 // Initialize Services
 if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'dummy-key') {
@@ -44,7 +48,7 @@ const razorpay = new Razorpay({
 
 // PostgreSQL Connection Pool
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/s7next',
+  connectionString: process.env.DATABASE_URL || 'postgresql://s7next:rwNsVf6oyh17wMfl4eCCtWpslQqw5Jsi@dpg-d6s17e0gjchc73bj40ag-a.singapore-postgres.render.com/s7next_k3es',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
