@@ -31,7 +31,7 @@ const app = express();
 // ⭐ ADD THIS CODE ⭐
 app.use(cors({
   origin: [
-    'https://create-react-r82fz6tpy-sitakuchibhatla-gmailcoms-projects.vercel.app',
+    'https://s7nexttechnologies.vercel.app',
     'http://localhost:3000'
   ],
   credentials: true,
