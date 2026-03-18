@@ -30,12 +30,10 @@ app.use(cors({
   const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
-      'https://s7nexttechnologies.vercel.app',
-      'http://localhost:3000',
-      'http://localhost:5000'
+      https://s7nexttechnologies.vercel.app/
     ];
     
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
