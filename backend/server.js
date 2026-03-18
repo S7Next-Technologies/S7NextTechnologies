@@ -23,6 +23,9 @@ const app = express();
 app.use(cors({
   origin: [
     'https://s7nexttechnologies.vercel.app',
+    'https://create-react-app-sitakuchibhatla-gmailcoms-projects.vercel.app',
+    'create-react-app-git-main-sitakuchibhatla-gmailcoms-projects.vercel.app',
+    'create-react-9exq516g7-sitakuchibhatla-gmailcoms-projects.vercel.app',
     'http://localhost:3000'
   ],
   credentials: true,
