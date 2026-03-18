@@ -19,31 +19,80 @@ const helmet = require('helmet');
 
 const app = express();
 
-// ⭐ CORS CONFIGURATION - SIMPLE AND WORKS
-app.use(cors({
-  origin: [
-    'https://s7nexttechnologies.vercel.app',
-    'https://create-react-app-sitakuchibhatla-gmailcoms-projects.vercel.app',
-    'create-react-app-git-main-sitakuchibhatla-gmailcoms-projects.vercel.app',
-    'create-react-9exq516g7-sitakuchibhatla-gmailcoms-projects.vercel.app',
-    'http://localhost:3000'
-  ],
+// ⭐ THIS IS THE FINAL FIX
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://s7nexttechnologies.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'http://127.0.0.1:3000'
+    ];
+    
+    // Allow any origin during development
+    // In production, restrict to your domain
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.includes(origin) || !origin) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      // Allow all in development
+      callback(null, true);
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-JSON-Response-Length'],
+  maxAge: 86400,
   optionsSuccessStatus: 200
-}));
+};
 
-// Preflight handler
-app.options('*', cors());
+app.use(cors(corsOptions));
 
-// Middleware
-app.use(helmet());
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
+// Other middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Port configuration
+// ⭐ ADD THIS DEBUG MIDDLEWARE
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://s7nexttechnologies.vercel.app');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// Your routes here...
+app.get('/api/courses', (req, res) => {
+  // your code
+});
+
+app.get('/api/apps', (req, res) => {
+  // your code
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
+});
+
 const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✓ Server running on port ${PORT}`);
+  console.log(`✓ CORS enabled for: https://s7nexttechnologies.vercel.app`);
+});
 
 // Initialize Services
 if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'dummy-key') {
