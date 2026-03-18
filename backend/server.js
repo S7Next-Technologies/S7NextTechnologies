@@ -27,10 +27,22 @@ const app = express();
 
 // ⭐ ADD THIS CODE ⭐
 app.use(cors({
-  origin: [
-    'https://s7nexttechnologies.vercel.app',
-    'http://localhost:3000'
-  ],
+  const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://s7nexttechnologies.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:5000'
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
