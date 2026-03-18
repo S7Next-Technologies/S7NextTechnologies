@@ -16,45 +16,36 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const PORT = process.env.PORT || 5000;
-// ═══════════════════════════════════════════════════════════════════════════
-// CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
-
-
 
 const app = express();
 
-// ⭐ ADD THIS CODE ⭐
+// ⭐ CORS CONFIGURATION - SIMPLE AND WORKS
 app.use(cors({
-  const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      https://s7nexttechnologies.vercel.app/
-    ];
-    
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-
+  origin: [
+    'https://s7nexttechnologies.vercel.app',
+    'http://localhost:3000'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 }));
-app.use(cors()); 
-app.use(express.json());
 
-// Your routes go here...
+// Preflight handler
+app.options('*', cors());
+
+// Middleware
+app.use(helmet());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Port configuration
+const PORT = process.env.PORT || 5000;
 
 // Initialize Services
 if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'dummy-key') {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
-
 if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_KEY !== 'dummy') {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -62,6 +53,10 @@ if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_KEY !== 'dummy'
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// YOUR ROUTES START HERE - KEEP YOUR EXISTING CODE BELOW
+// ════════════════════════════════════════════════════════════════════════════
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'dummy-key',
