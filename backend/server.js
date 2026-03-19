@@ -19,25 +19,13 @@ const helmet = require('helmet');
 
 const app = express();
 
-
-const allowedOrigins = [
-  'http://localhost:10000',
-  'https://s7nexttechnologies.vercel.app'
-];
-
+// 🔥 PUT THIS AS FIRST app.use()
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  console.log("Origin:", origin, "| Method:", req.method);
+  console.log("CORS HIT:", req.method, origin);
 
-  // ✅ Set origin
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else {
-    // TEMP: allow all (you can tighten later)
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  }
-
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader(
     'Access-Control-Allow-Methods',
@@ -48,25 +36,60 @@ app.use((req, res, next) => {
     'Content-Type, Authorization'
   );
 
-  // 🔥 THIS is the key fix
   if (req.method === 'OPTIONS') {
-    return res.status(200).end(); // NOT 204
+    console.log("OPTIONS HANDLED");
+    return res.status(200).end();
   }
 
   next();
 });
+// const allowedOrigins = [
+//   'http://localhost:10000',
+//   'https://s7nexttechnologies.vercel.app'
+// ];
+
+// app.use((req, res, next) => {
+//   const origin = req.headers.origin;
+
+//   console.log("Origin:", origin, "| Method:", req.method);
+
+//   // ✅ Set origin
+//   if (origin && allowedOrigins.includes(origin)) {
+//     res.setHeader('Access-Control-Allow-Origin', origin);
+//   } else {
+//     // TEMP: allow all (you can tighten later)
+//     res.setHeader('Access-Control-Allow-Origin', origin || '*');
+//   }
+
+//   res.setHeader('Access-Control-Allow-Credentials', 'true');
+//   res.setHeader(
+//     'Access-Control-Allow-Methods',
+//     'GET,POST,PUT,DELETE,OPTIONS'
+//   );
+//   res.setHeader(
+//     'Access-Control-Allow-Headers',
+//     'Content-Type, Authorization'
+//   );
+
+//   // 🔥 THIS is the key fix
+//   if (req.method === 'OPTIONS') {
+//     return res.status(200).end(); // NOT 204
+//   }
+
+//   next();
+// });
 
 // Other middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
-app.use(
-  helmet({
-    crossOriginOpenerPolicy: false,       // for Firebase
-    crossOriginResourcePolicy: false,     // 🔥 THIS FIXES YOUR CORS ISSUE
-  })
-);
+// app.use(
+//   helmet({
+//     crossOriginOpenerPolicy: false,       // for Firebase
+//     crossOriginResourcePolicy: false,     // 🔥 THIS FIXES YOUR CORS ISSUE
+//   })
+// );
 
 // Your routes
 // app.get('/api/courses', (req, res) => {
