@@ -3,9 +3,9 @@
 // Copy this entire file as your server.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
@@ -16,23 +16,104 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const PORT = process.env.PORT || 5000;
-// ═══════════════════════════════════════════════════════════════════════════
-// CONFIGURATION
-// ═══════════════════════════════════════════════════════════════════════════
 
 const app = express();
-app.use(cors({
-  origin: ["http://localhost:3000", "https://localhost:3000"],
-  methods: ['GET','POST','PUT','DELETE'],
-  credentials: true
-}));
+
+// 🔥 PUT THIS AS FIRST app.use()
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  console.log("CORS HIT:", req.method, origin);
+
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET,POST,PUT,DELETE,OPTIONS'
+  );
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization'
+  );
+
+  if (req.method === 'OPTIONS') {
+    console.log("OPTIONS HANDLED");
+    return res.status(200).end();
+  }
+
+  next();
+});
+// const allowedOrigins = [
+//   'http://localhost:10000',
+//   'https://s7nexttechnologies.vercel.app'
+// ];
+
+// app.use((req, res, next) => {
+//   const origin = req.headers.origin;
+
+//   console.log("Origin:", origin, "| Method:", req.method);
+
+//   // ✅ Set origin
+//   if (origin && allowedOrigins.includes(origin)) {
+//     res.setHeader('Access-Control-Allow-Origin', origin);
+//   } else {
+//     // TEMP: allow all (you can tighten later)
+//     res.setHeader('Access-Control-Allow-Origin', origin || '*');
+//   }
+
+//   res.setHeader('Access-Control-Allow-Credentials', 'true');
+//   res.setHeader(
+//     'Access-Control-Allow-Methods',
+//     'GET,POST,PUT,DELETE,OPTIONS'
+//   );
+//   res.setHeader(
+//     'Access-Control-Allow-Headers',
+//     'Content-Type, Authorization'
+//   );
+
+//   // 🔥 THIS is the key fix
+//   if (req.method === 'OPTIONS') {
+//     return res.status(200).end(); // NOT 204
+//   }
+
+//   next();
+// });
+
+// Other middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+// app.use(
+//   helmet({
+//     crossOriginOpenerPolicy: false,       // for Firebase
+//     crossOriginResourcePolicy: false,     // 🔥 THIS FIXES YOUR CORS ISSUE
+//   })
+// );
+
+// Your routes
+// app.get('/api/courses', (req, res) => {
+//   res.json({ message: "Courses API working ✅" });
+// });
+
+// app.get('/api/apps', (req, res) => {
+//   res.json({ message: "Apps API working ✅" });
+// });
+
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ error: err.message });
+});
+
+
+const PORT = process.env.PORT || 5000;
 
 // Initialize Services
 if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'dummy-key') {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
-
 if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_KEY !== 'dummy') {
   cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -40,6 +121,10 @@ if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_KEY !== 'dummy'
     api_secret: process.env.CLOUDINARY_API_SECRET,
   });
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// YOUR ROUTES START HERE - KEEP YOUR EXISTING CODE BELOW
+// ════════════════════════════════════════════════════════════════════════════
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'dummy-key',
@@ -65,11 +150,6 @@ pool.query('SELECT NOW()', (err, res) => {
 // MIDDLEWARE
 // ═══════════════════════════════════════════════════════════════════════════
 
-app.use(helmet({
-  // Allow cross-origin popups needed for Firebase Google OAuth
-  crossOriginOpenerPolicy: false,
-}));
-app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
