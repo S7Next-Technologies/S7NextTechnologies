@@ -25,21 +25,28 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://s7nexttechnologies.vercel.app'
 ];
-app.use(cors({
-  origin: function(origin, callback) {
-    // allow requests with no origin (like mobile apps, curl, etc.)
+
+const corsOptions = {
+  origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
     } else {
-      return callback(new Error('Not allowed by CORS'));
+      console.log("❌ Blocked by CORS:", origin);
+      callback(null, false); // ⚠️ important change (no error throw)
     }
   },
-  credentials: true
-}));
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 
-// Handle preflight requests
-app.options('*', cors());
+// ✅ Apply once
+app.use(cors(corsOptions));
+
+// ✅ Explicit preflight handling with SAME options
+app.options('*', cors(corsOptions));
 
 
 // Other middleware
