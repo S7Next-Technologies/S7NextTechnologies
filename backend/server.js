@@ -20,32 +20,30 @@ const helmet = require('helmet');
 const app = express();
 
 
-// ✅ CORS FIX: Allow both local and production frontend
 const allowedOrigins = [
-  'http://localhost:3000',
+  'http://localhost:10000',
   'https://s7nexttechnologies.vercel.app'
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
+    console.log("Incoming Origin:", origin);
+
+    // ✅ Allow requests with no origin (curl, postman, mobile)
     if (!origin) return callback(null, true);
 
+    // ✅ Allow listed origins
     if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log("❌ Blocked by CORS:", origin);
-      callback(null, false); // ⚠️ important change (no error throw)
+      return callback(null, true);
     }
+
+    // 🔥 IMPORTANT: allow anyway for debugging (temporary)
+    return callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
-// ✅ Apply once
 app.use(cors(corsOptions));
-
-// ✅ Explicit preflight handling with SAME options
 app.options('*', cors(corsOptions));
 
 
