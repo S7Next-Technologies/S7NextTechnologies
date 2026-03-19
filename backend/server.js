@@ -25,16 +25,16 @@ const allowedOrigins = [
   'https://s7nexttechnologies.vercel.app'
 ];
 
-// 🔥 FORCE headers for ALL requests (including OPTIONS)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  console.log("Incoming Origin:", origin);
+  console.log("Origin:", origin, "| Method:", req.method);
 
+  // ✅ Set origin
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   } else {
-    // 🔥 TEMP: allow all (for debugging)
+    // TEMP: allow all (you can tighten later)
     res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
 
@@ -48,9 +48,9 @@ app.use((req, res, next) => {
     'Content-Type, Authorization'
   );
 
-  // 🔥 HANDLE PREFLIGHT HERE (no cors() dependency)
+  // 🔥 THIS is the key fix
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    return res.status(200).end(); // NOT 204
   }
 
   next();
@@ -61,9 +61,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
-// (Optional but recommended)
-app.use(helmet());
-
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: false,       // for Firebase
+    crossOriginResourcePolicy: false,     // 🔥 THIS FIXES YOUR CORS ISSUE
+  })
+);
 
 // Your routes
 // app.get('/api/courses', (req, res) => {
@@ -124,11 +127,6 @@ pool.query('SELECT NOW()', (err, res) => {
 // MIDDLEWARE
 // ═══════════════════════════════════════════════════════════════════════════
 
-app.use(helmet({
-
-  // Allow cross-origin popups needed for Firebase Google OAuth
-  crossOriginOpenerPolicy: false,
-}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
