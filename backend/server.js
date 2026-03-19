@@ -25,27 +25,36 @@ const allowedOrigins = [
   'https://s7nexttechnologies.vercel.app'
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    console.log("Incoming Origin:", origin);
+// 🔥 FORCE headers for ALL requests (including OPTIONS)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-    // ✅ Allow requests with no origin (curl, postman, mobile)
-    if (!origin) return callback(null, true);
+  console.log("Incoming Origin:", origin);
 
-    // ✅ Allow listed origins
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    // 🔥 TEMP: allow all (for debugging)
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
 
-    // 🔥 IMPORTANT: allow anyway for debugging (temporary)
-    return callback(null, true);
-  },
-  credentials: true,
-};
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET,POST,PUT,DELETE,OPTIONS'
+  );
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization'
+  );
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+  // 🔥 HANDLE PREFLIGHT HERE (no cors() dependency)
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
 
+  next();
+});
 
 // Other middleware
 app.use(express.json());
