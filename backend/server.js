@@ -133,7 +133,7 @@ const razorpay = new Razorpay({
 
 // PostgreSQL Connection Pool
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://s7next:rwNsVf6oyh17wMfl4eCCtWpslQqw5Jsi@dpg-d6s17e0gjchc73bj40ag-a.singapore-postgres.render.com/s7next_k3es',
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Hyderabad%40APR_49@db.nlrjknrcdnuovqtqmwhs.supabase.co:5432/postgres',
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
