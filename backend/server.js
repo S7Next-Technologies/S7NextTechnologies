@@ -19,86 +19,134 @@ const helmet = require('helmet');
 
 const app = express();
 
-// 🔥 PUT THIS AS FIRST app.use()
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
 
-  console.log("CORS HIT:", req.method, origin);
+// =========================
+// 🔥 CORS (FIXED PROPERLY)
+// =========================
+app.use(cors({
+  origin: [
+    'http://localhost:10000',
+    'https://s7nexttechnologies.vercel.app'
+  ],
+  credentials: true,
+}));
 
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET,POST,PUT,DELETE,OPTIONS'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization'
-  );
+// handle preflight
+app.options('*', cors());
 
-  if (req.method === 'OPTIONS') {
-    console.log("OPTIONS HANDLED");
-    return res.status(200).end();
-  }
 
-  next();
+// =========================
+// 🔥 SECURITY (SAFE CONFIG)
+// =========================
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false, // important for CORS
+  })
+);
+
+
+// =========================
+// 🔥 RATE LIMIT (OPTIONAL)
+// =========================
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
 });
-// const allowedOrigins = [
-//   'http://localhost:10000',
-//   'https://s7nexttechnologies.vercel.app'
-// ];
+app.use(limiter);
 
-// app.use((req, res, next) => {
-//   const origin = req.headers.origin;
 
-//   console.log("Origin:", origin, "| Method:", req.method);
-
-//   // ✅ Set origin
-//   if (origin && allowedOrigins.includes(origin)) {
-//     res.setHeader('Access-Control-Allow-Origin', origin);
-//   } else {
-//     // TEMP: allow all (you can tighten later)
-//     res.setHeader('Access-Control-Allow-Origin', origin || '*');
-//   }
-
-//   res.setHeader('Access-Control-Allow-Credentials', 'true');
-//   res.setHeader(
-//     'Access-Control-Allow-Methods',
-//     'GET,POST,PUT,DELETE,OPTIONS'
-//   );
-//   res.setHeader(
-//     'Access-Control-Allow-Headers',
-//     'Content-Type, Authorization'
-//   );
-
-//   // 🔥 THIS is the key fix
-//   if (req.method === 'OPTIONS') {
-//     return res.status(200).end(); // NOT 204
-//   }
-
-//   next();
-// });
-
-// Other middleware
+// =========================
+// 🔥 BODY PARSING
+// =========================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
-// app.use(
-//   helmet({
-//     crossOriginOpenerPolicy: false,       // for Firebase
-//     crossOriginResourcePolicy: false,     // 🔥 THIS FIXES YOUR CORS ISSUE
-//   })
-// );
+// =========================
+// 🔥 DEBUG LOGGER (KEEP THIS TEMP)
+// =========================
+app.use((req, res, next) => {
+  console.log("REQUEST:", req.method, req.url);
+  next();
+});
 
-// Your routes
-// app.get('/api/courses', (req, res) => {
-//   res.json({ message: "Courses API working ✅" });
-// });
 
-// app.get('/api/apps', (req, res) => {
-//   res.json({ message: "Apps API working ✅" });
-// });
+// =========================
+// 🔥 DATABASE
+// =========================
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
+
+// =========================
+// 🔥 CLOUDINARY CONFIG
+// =========================
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET,
+});
+
+
+// =========================
+// 🔥 SENDGRID CONFIG
+// =========================
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+
+// =========================
+// 🔥 RAZORPAY CONFIG
+// =========================
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
+
+
+// =========================
+// 🔥 MULTER (FILE UPLOAD)
+// =========================
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+
+// =========================
+// 🔥 TEST ROUTES (VERY IMPORTANT)
+// =========================
+app.get('/', (req, res) => {
+  res.send('Server is running 🚀');
+});
+
+app.get('/api/apps', (req, res) => {
+  res.json({ message: "Apps API working ✅" });
+});
+
+app.get('/api/courses', (req, res) => {
+  res.json({ message: "Courses API working ✅" });
+});
+
+
+// =========================
+// 🔥 ERROR HANDLER (IMPORTANT)
+// =========================
+app.use((err, req, res, next) => {
+  console.error("ERROR:", err.stack);
+  res.status(500).json({ error: "Something went wrong" });
+});
+
+
+// =========================
+// 🔥 START SERVER
+// =========================
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 
 // Error handler
