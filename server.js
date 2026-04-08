@@ -69,13 +69,13 @@ app.use(
 );
 
 // Your routes
-// app.get('/api/courses', (req, res) => {
-//   res.json({ message: "Courses API working ✅" });
-// });
+app.get('/api/courses', (req, res) => {
+  res.json({ message: "Courses API working ✅" });
+});
 
-// app.get('/api/apps', (req, res) => {
-//   res.json({ message: "Apps API working ✅" });
-// });
+app.get('/api/apps', (req, res) => {
+   res.json({ message: "Apps API working ✅" });
+ });
 
 
 // Error handler
