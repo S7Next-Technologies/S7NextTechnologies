@@ -845,10 +845,16 @@ app.put('/api/user/progress/:courseId', authenticateToken, async (req, res) => {
 
 app.get('/api/courses', async (req, res) => {
   try {
-    const courses = await pool.query('SELECT * FROM courses ORDER BY created_at DESC');
-    res.json(courses.rows);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch courses' });
+    console.log("Fetching courses...");
+
+    const result = await pool.query('SELECT * FROM courses');
+
+    console.log("Courses fetched:", result.rows.length);
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error("COURSES ERROR:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -870,11 +876,16 @@ app.get('/api/courses/:id', async (req, res) => {
 
 app.get('/api/apps', async (req, res) => {
   try {
-    const apps = await pool.query('SELECT * FROM apps ORDER BY created_at DESC');
-    res.json(apps.rows);
-  } catch (error) {
-    console.error('Fetch apps error:', error);
-    res.status(500).json({ error: 'Failed to fetch apps' });
+    console.log("Fetching apps...");
+
+    const result = await pool.query('SELECT * FROM apps');
+
+    console.log("Apps fetched:", result.rows.length);
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error("APPS ERROR:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
