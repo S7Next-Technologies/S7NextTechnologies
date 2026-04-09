@@ -139,8 +139,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  },
-  family: 4   // ✅ FORCE IPv4 (THIS IS THE FIX)
+  }   // ✅ FORCE IPv4 (THIS IS THE FIX)
 });
 
 // Test database connection
