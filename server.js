@@ -4,8 +4,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 import pkg from 'pg';
 const { Pool } = pkg;
-
-const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
