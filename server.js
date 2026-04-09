@@ -2,6 +2,8 @@
 // S7NEXTTECHNOLOGIES - COMPLETE PRODUCTION BACKEND SERVER
 // Copy this entire file as your server.js
 // ═══════════════════════════════════════════════════════════════════════════
+import pkg from 'pg';
+const { Pool } = pkg;
 
 const express = require('express');
 const cors = require('cors');
@@ -132,9 +134,13 @@ const razorpay = new Razorpay({
 });
 
 // PostgreSQL Connection Pool
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:Hyderabad%40APR_49@db.nlrjknrcdnuovqtqmwhs.supabase.co:5432/postgres',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  family: 4   // ✅ FORCE IPv4 (THIS IS THE FIX)
 });
 
 // Test database connection
