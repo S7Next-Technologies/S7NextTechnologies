@@ -10,7 +10,6 @@ const cors = require('cors');
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const sgMail = require('@sendgrid/mail');
