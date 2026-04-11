@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // S7NEXTTECHNOLOGIES - COMPLETE PRODUCTION BACKEND SERVER
-// Copy this entire file as your server.js
+// Fixed for Supabase PostgreSQL compatibility
 // ═══════════════════════════════════════════════════════════════════════════
-import pkg from 'pg';
-const { Pool } = pkg;
+
+const express = require('express');
+const { Pool } = require('pg');
 const cors = require('cors');
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
@@ -18,87 +19,25 @@ const helmet = require('helmet');
 
 const app = express();
 
-// 🔥 PUT THIS AS FIRST app.use()
+// 🔥 CORS — must be first middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-
   console.log("CORS HIT:", req.method, origin);
 
   res.setHeader('Access-Control-Allow-Origin', origin || '*');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET,POST,PUT,DELETE,OPTIONS'
-  );
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     console.log("OPTIONS HANDLED");
     return res.status(200).end();
   }
-
   next();
 });
-// const allowedOrigins = [
-//   'http://localhost:10000',
-//   'https://s7nexttechnologies.vercel.app'
-// ];
 
-// app.use((req, res, next) => {
-//   const origin = req.headers.origin;
-
-//   console.log("Origin:", origin, "| Method:", req.method);
-
-//   // ✅ Set origin
-//   if (origin && allowedOrigins.includes(origin)) {
-//     res.setHeader('Access-Control-Allow-Origin', origin);
-//   } else {
-//     // TEMP: allow all (you can tighten later)
-//     res.setHeader('Access-Control-Allow-Origin', origin || '*');
-//   }
-
-//   res.setHeader('Access-Control-Allow-Credentials', 'true');
-//   res.setHeader(
-//     'Access-Control-Allow-Methods',
-//     'GET,POST,PUT,DELETE,OPTIONS'
-//   );
-//   res.setHeader(
-//     'Access-Control-Allow-Headers',
-//     'Content-Type, Authorization'
-//   );
-
-//   // 🔥 THIS is the key fix
-//   if (req.method === 'OPTIONS') {
-//     return res.status(200).end(); // NOT 204
-//   }
-
-//   next();
-// });
-
-// Other middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-
-// app.use(
-//   helmet({
-//     crossOriginOpenerPolicy: false,       // for Firebase
-//     crossOriginResourcePolicy: false,     // 🔥 THIS FIXES YOUR CORS ISSUE
-//   })
-// );
-
-// Your routes
-// app.get('/api/courses', (req, res) => {
-//   res.json({ message: "Courses API working ✅" });
-// });
-
-// app.get('/api/apps', (req, res) => {
-//   res.json({ message: "Apps API working ✅" });
-// });
-
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -106,10 +45,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
+const PORT = process.env.PORT || 10000;
 
-const PORT = process.env.PORT || 5000;
-
-// Initialize Services
+// ─── Initialize Services ──────────────────────────────────────────────────
 if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY !== 'dummy-key') {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
@@ -121,39 +59,54 @@ if (process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_KEY !== 'dummy'
   });
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-// YOUR ROUTES START HERE - KEEP YOUR EXISTING CODE BELOW
-// ════════════════════════════════════════════════════════════════════════════
-
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID || 'dummy-key',
   key_secret: process.env.RAZORPAY_KEY_SECRET || 'dummy-secret',
 });
 
-// PostgreSQL Connection Pool
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPABASE POSTGRESQL CONNECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ✅ Use the Transaction Pooler URL from Supabase for best Render compatibility.
+//    In your Supabase dashboard → Project Settings → Database → Connection string
+//    grab the "Transaction" mode pooler URL (port 6543) and set it as DATABASE_URL.
+//    Example: postgresql://postgres.xxxx:[PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
+//
+//    If you are using the direct connection (port 5432), that also works — just
+//    make sure the SSL block below stays as-is.
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false
-  }   // ✅ FORCE IPv4 (THIS IS THE FIX)
+    rejectUnauthorized: false,   // required for Supabase / Render TLS
+  },
+  // Supabase free tier has a 60-connection limit — keep the pool small
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
+// Test database connection on startup
+pool.connect((err, client, release) => {
   if (err) {
-    console.error('❌ Database connection error:', err.message);
+    console.error('❌ Supabase DB connection error:', err.message);
+    console.error('   → Check DATABASE_URL in your Render environment variables.');
   } else {
-    console.log('✅ Database connected at:', res.rows[0].now);
+    client.query('SELECT NOW()', (queryErr, result) => {
+      release();
+      if (queryErr) {
+        console.error('❌ DB test query failed:', queryErr.message);
+      } else {
+        console.log('✅ Supabase DB connected at:', result.rows[0].now);
+      }
+    });
   }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MIDDLEWARE
 // ═══════════════════════════════════════════════════════════════════════════
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -177,10 +130,9 @@ const upload = multer({
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// UTILITY FUNCTIONS (MUST BE BEFORE ROUTES!)
+// UTILITY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Generate JWT tokens
 const generateTokens = (userId) => {
   const accessToken = jwt.sign({ userId }, process.env.JWT_SECRET || 'secret', {
     expiresIn: '15m',
@@ -191,7 +143,6 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
-// Verify JWT middleware
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -213,7 +164,6 @@ const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Admin middleware
 const isAdmin = async (req, res, next) => {
   try {
     if (req.user.role !== 'admin') {
@@ -222,9 +172,11 @@ const isAdmin = async (req, res, next) => {
 
     const user = await pool.query('SELECT email, role FROM users WHERE id = $1', [req.user.id]);
 
-    if (user.rows.length === 0 ||
-        user.rows[0].email !== 's7nexttechnologies@gmail.com' ||
-        user.rows[0].role !== 'admin') {
+    if (
+      user.rows.length === 0 ||
+      user.rows[0].email !== 's7nexttechnologies@gmail.com' ||
+      user.rows[0].role !== 'admin'
+    ) {
       return res.status(403).json({ error: 'Unauthorized admin access' });
     }
 
@@ -235,7 +187,6 @@ const isAdmin = async (req, res, next) => {
   }
 };
 
-// Send email via SendGrid
 const sendEmail = async (to, subject, html) => {
   try {
     if (!process.env.SENDGRID_API_KEY || process.env.SENDGRID_API_KEY === 'dummy-key') {
@@ -257,21 +208,20 @@ const sendEmail = async (to, subject, html) => {
   }
 };
 
-// Upload image to Cloudinary
 const uploadToCloudinary = async (fileBuffer, folder = 'avatars') => {
   return new Promise((resolve, reject) => {
     if (!process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_API_KEY === 'dummy') {
       resolve({ secure_url: 'https://via.placeholder.com/150' });
       return;
     }
-    const upload = cloudinary.uploader.upload_stream(
+    const uploadStream = cloudinary.uploader.upload_stream(
       { folder, transformation: [{ width: 500, height: 500, crop: 'fill' }] },
       (error, result) => {
         if (error) reject(error);
         else resolve(result);
       }
     );
-    upload.end(fileBuffer);
+    uploadStream.end(fileBuffer);
   });
 };
 
@@ -281,6 +231,7 @@ const uploadToCloudinary = async (fileBuffer, folder = 'avatars') => {
 
 const initDatabase = async () => {
   try {
+    // Core tables
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -357,12 +308,10 @@ const initDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments(course_id);
     `);
 
-    // Add syllabus column to courses if it doesn't exist (for existing databases)
-    await pool.query(`
-      ALTER TABLE courses ADD COLUMN IF NOT EXISTS syllabus JSONB;
-    `).catch(() => {});
+    // Add syllabus column if missing (safe migration)
+    await pool.query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS syllabus JSONB;`).catch(() => {});
 
-    // Insert default courses
+    // Seed default courses if none exist
     const coursesCount = await pool.query('SELECT COUNT(*) FROM courses');
     if (parseInt(coursesCount.rows[0].count) === 0) {
       await pool.query(`
@@ -384,10 +333,9 @@ const initDatabase = async () => {
       console.log('✅ Default courses inserted');
     }
 
-    // Create admin user with secure credentials
+    // Create / update admin user
     const adminEmail = 's7nexttechnologies@gmail.com';
     const adminPassword = 'Hyderabad@APR_49';
-
     const adminExists = await pool.query('SELECT id FROM users WHERE email = $1', [adminEmail]);
 
     if (adminExists.rows.length === 0) {
@@ -406,7 +354,7 @@ const initDatabase = async () => {
       console.log('✅ Admin credentials updated:', adminEmail);
     }
 
-    // Remove admin role from other users
+    // Strip admin role from any other accounts
     await pool.query(
       "UPDATE users SET role = 'student' WHERE role = 'admin' AND email != $1",
       [adminEmail]
@@ -414,7 +362,8 @@ const initDatabase = async () => {
 
     console.log('✅ Database initialized successfully');
   } catch (error) {
-    console.error('❌ Database initialization error:', error);
+    console.error('❌ Database initialization error:', error.message);
+    // Don't crash the server — log and continue
   }
 };
 
@@ -422,14 +371,12 @@ const initDatabase = async () => {
 // AUTHENTICATION ROUTES
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Register with Email
 app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'All fields required' });
   }
-
   if (password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
@@ -441,7 +388,6 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-
     const result = await pool.query(
       'INSERT INTO users (name, email, password_hash, auth_provider) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
       [name, email, passwordHash, 'email']
@@ -451,14 +397,14 @@ app.post('/api/auth/register', async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(user.id);
 
     await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'7 days\')',
+      "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days')",
       [user.id, refreshToken]
     );
 
     await sendEmail(
       email,
       'Welcome to S7NextTechnologies!',
-      `<h2>Welcome ${name}!</h2><p>Thank you for joining S7NextTechnologies - India's premier Python learning platform.</p><p>Start learning today!</p>`
+      `<h2>Welcome ${name}!</h2><p>Thank you for joining S7NextTechnologies - India's premier Python learning platform.</p>`
     );
 
     res.json({
@@ -472,7 +418,6 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login with Email
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -497,7 +442,7 @@ app.post('/api/auth/login', async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(user.id);
 
     await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'7 days\')',
+      "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days')",
       [user.id, refreshToken]
     );
 
@@ -519,8 +464,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// ─── Google OAuth Route ───────────────────────────────────────────────────
-// Verifies Firebase idToken on the backend, then creates/finds the user
 app.post('/api/auth/google', async (req, res) => {
   const { idToken } = req.body;
 
@@ -529,7 +472,6 @@ app.post('/api/auth/google', async (req, res) => {
   }
 
   try {
-    // Verify token with Firebase Admin SDK if configured
     let firebaseUser = null;
 
     if (
@@ -537,16 +479,13 @@ app.post('/api/auth/google', async (req, res) => {
       process.env.FIREBASE_PRIVATE_KEY &&
       process.env.FIREBASE_CLIENT_EMAIL
     ) {
-      // Lazy-load firebase-admin to avoid crash if not installed
       let admin;
       try {
         admin = require('firebase-admin');
       } catch (e) {
-        console.error('firebase-admin not installed. Run: npm install firebase-admin');
-        return res.status(500).json({ error: 'Firebase Admin SDK not installed on server. Run: npm install firebase-admin' });
+        return res.status(500).json({ error: 'firebase-admin not installed. Run: npm install firebase-admin' });
       }
 
-      // Initialize Firebase Admin only once
       if (!admin.apps.length) {
         admin.initializeApp({
           credential: admin.credential.cert({
@@ -565,8 +504,7 @@ app.post('/api/auth/google', async (req, res) => {
         uid: decoded.uid,
       };
     } else {
-      // Fallback: decode without verification (dev only — do NOT use in production)
-      console.warn('⚠️  Firebase Admin not configured — decoding token without verification (dev mode only)');
+      console.warn('⚠️  Firebase Admin not configured — dev mode token decode');
       const parts = idToken.split('.');
       if (parts.length !== 3) {
         return res.status(400).json({ error: 'Invalid ID token format' });
@@ -584,11 +522,9 @@ app.post('/api/auth/google', async (req, res) => {
       return res.status(400).json({ error: 'Could not extract email from Google token' });
     }
 
-    // Find or create user
     let user = await pool.query('SELECT * FROM users WHERE email = $1', [firebaseUser.email]);
 
     if (user.rows.length === 0) {
-      // New user — create account
       const result = await pool.query(
         `INSERT INTO users (name, email, avatar_url, auth_provider, is_verified, role)
          VALUES ($1, $2, $3, 'google', true, 'student')
@@ -603,7 +539,6 @@ app.post('/api/auth/google', async (req, res) => {
         `<h2>Welcome ${firebaseUser.name}!</h2><p>Your Google account has been linked. Start learning today!</p>`
       );
     } else {
-      // Existing user — update avatar if changed
       if (firebaseUser.avatar && user.rows[0].avatar_url !== firebaseUser.avatar) {
         await pool.query('UPDATE users SET avatar_url = $1 WHERE email = $2', [firebaseUser.avatar, firebaseUser.email]);
         user.rows[0].avatar_url = firebaseUser.avatar;
@@ -614,7 +549,7 @@ app.post('/api/auth/google', async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(dbUser.id);
 
     await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'7 days\')',
+      "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days')",
       [dbUser.id, refreshToken]
     );
 
@@ -636,25 +571,21 @@ app.post('/api/auth/google', async (req, res) => {
   }
 });
 
-// Send OTP (Phone Auth)
 app.post('/api/auth/send-otp', async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: 'Phone number required' });
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // Store OTP temporarily (in production use Redis)
   global.otpStore = global.otpStore || {};
   global.otpStore[phone] = { otp, expires: Date.now() + 10 * 60 * 1000 };
 
   console.log(`📱 OTP for ${phone}: ${otp}`);
 
-  // In dev mode, return otp in response for testing
   if (process.env.NODE_ENV !== 'production') {
     return res.json({ message: 'OTP sent (dev mode)', otp });
   }
 
-  // Production: send via Twilio
   if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
     try {
       const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -670,10 +601,9 @@ app.post('/api/auth/send-otp', async (req, res) => {
     }
   }
 
-  res.json({ message: 'OTP sent', otp }); // fallback dev
+  res.json({ message: 'OTP sent', otp });
 });
 
-// Verify OTP
 app.post('/api/auth/verify-otp', async (req, res) => {
   const { phone, code, name } = req.body;
 
@@ -703,7 +633,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(dbUser.id);
 
     await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'7 days\')',
+      "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days')",
       [dbUser.id, refreshToken]
     );
 
@@ -725,7 +655,6 @@ app.post('/api/auth/verify-otp', async (req, res) => {
   }
 });
 
-// Refresh Token
 app.post('/api/auth/refresh', async (req, res) => {
   const { refreshToken } = req.body;
 
@@ -745,7 +674,7 @@ app.post('/api/auth/refresh', async (req, res) => {
 
     await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
     await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'7 days\')',
+      "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days')",
       [decoded.userId, newRefreshToken]
     );
 
@@ -755,7 +684,6 @@ app.post('/api/auth/refresh', async (req, res) => {
   }
 });
 
-// Logout
 app.post('/api/auth/logout', authenticateToken, async (req, res) => {
   const { refreshToken } = req.body;
   await pool.query('DELETE FROM refresh_tokens WHERE token = $1', [refreshToken]);
@@ -800,7 +728,6 @@ app.post('/api/user/avatar', authenticateToken, upload.single('avatar'), async (
     }
 
     const result = await uploadToCloudinary(req.file.buffer, 'avatars');
-
     await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [result.secure_url, req.user.id]);
 
     res.json({ avatarUrl: result.secure_url });
@@ -847,15 +774,10 @@ app.put('/api/user/progress/:courseId', authenticateToken, async (req, res) => {
 
 app.get('/api/courses', async (req, res) => {
   try {
-    console.log("Fetching courses...");
-
-    const result = await pool.query('SELECT * FROM courses');
-
-    console.log("Courses fetched:", result.rows.length);
+    const result = await pool.query('SELECT * FROM courses ORDER BY id ASC');
     res.json(result.rows);
-
   } catch (err) {
-    console.error("COURSES ERROR:", err.message);
+    console.error('COURSES ERROR:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -873,31 +795,26 @@ app.get('/api/courses/:id', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// APPS / PROJECTS ROUTES (PUBLIC)
+// APPS / PROJECTS ROUTES
 // ═══════════════════════════════════════════════════════════════════════════
 
 app.get('/api/apps', async (req, res) => {
   try {
-    console.log("Fetching apps...");
-
-    const result = await pool.query('SELECT * FROM apps');
-
-    console.log("Apps fetched:", result.rows.length);
+    const result = await pool.query('SELECT * FROM apps ORDER BY id ASC');
     res.json(result.rows);
-
   } catch (err) {
-    console.error("APPS ERROR:", err.message);
+    console.error('APPS ERROR:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
 app.get('/api/apps/:id', async (req, res) => {
   try {
-    const app = await pool.query('SELECT * FROM apps WHERE id = $1', [req.params.id]);
-    if (app.rows.length === 0) {
+    const appResult = await pool.query('SELECT * FROM apps WHERE id = $1', [req.params.id]);
+    if (appResult.rows.length === 0) {
       return res.status(404).json({ error: 'App not found' });
     }
-    res.json(app.rows[0]);
+    res.json(appResult.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch app' });
   }
@@ -929,27 +846,27 @@ app.post('/api/payment/create-order', authenticateToken, async (req, res) => {
 
     if (!process.env.RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID === 'dummy-key') {
       const mockOrderId = 'order_' + Date.now();
-      res.json({
+      return res.json({
         orderId: mockOrderId,
         amount: amount * 100,
         currency: 'INR',
         keyId: 'mock-key',
         dev: true,
       });
-    } else {
-      const order = await razorpay.orders.create({
-        amount: amount * 100,
-        currency: 'INR',
-        receipt: `receipt_${req.user.id}_${courseId}`,
-      });
-
-      res.json({
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        keyId: process.env.RAZORPAY_KEY_ID,
-      });
     }
+
+    const order = await razorpay.orders.create({
+      amount: amount * 100,
+      currency: 'INR',
+      receipt: `receipt_${req.user.id}_${courseId}`,
+    });
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+    });
   } catch (error) {
     console.error('Payment creation error:', error);
     res.status(500).json({ error: 'Failed to create payment order' });
@@ -1029,7 +946,7 @@ app.post('/api/admin/login', async (req, res) => {
     const { accessToken, refreshToken } = generateTokens(admin.id);
 
     await pool.query(
-      'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'7 days\')',
+      "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '7 days')",
       [admin.id, refreshToken]
     );
 
@@ -1046,7 +963,7 @@ app.post('/api/admin/login', async (req, res) => {
 
 app.get('/api/admin/stats', authenticateToken, isAdmin, async (req, res) => {
   try {
-    const totalStudents = await pool.query("SELECT COUNT(DISTINCT user_id) as count FROM enrollments");
+    const totalStudents = await pool.query('SELECT COUNT(DISTINCT user_id) as count FROM enrollments');
     const totalCourses = await pool.query('SELECT COUNT(*) as count FROM courses');
     const totalEnrollments = await pool.query('SELECT COUNT(*) as count FROM enrollments');
     const totalRevenue = await pool.query("SELECT SUM(amount_paid) as total FROM enrollments WHERE payment_status = 'completed'");
@@ -1077,7 +994,6 @@ app.get('/api/admin/enrollments', authenticateToken, isAdmin, async (req, res) =
   }
 });
 
-// Admin — Add Course
 app.post('/api/admin/courses', authenticateToken, isAdmin, async (req, res) => {
   const { title, tagline, description, price, duration, level, icon, color, modules, topics, syllabus, tag } = req.body;
 
@@ -1095,7 +1011,6 @@ app.post('/api/admin/courses', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
-// Admin — Update Course
 app.put('/api/admin/courses/:id', authenticateToken, isAdmin, async (req, res) => {
   const { title, tagline, description, price, duration, level, icon, color, modules, topics, syllabus, tag } = req.body;
 
@@ -1119,7 +1034,6 @@ app.put('/api/admin/courses/:id', authenticateToken, isAdmin, async (req, res) =
   }
 });
 
-// Admin — Delete Course
 app.delete('/api/admin/courses/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM courses WHERE id = $1', [req.params.id]);
@@ -1129,9 +1043,6 @@ app.delete('/api/admin/courses/:id', authenticateToken, isAdmin, async (req, res
   }
 });
 
-// ─── Admin — Apps / Projects ──────────────────────────────────────────────
-
-// Admin — Add App
 app.post('/api/admin/apps', authenticateToken, isAdmin, async (req, res) => {
   const { name, description, icon, color, tech_stack, live_url, github_url, cover_image, status, category } = req.body;
 
@@ -1150,7 +1061,6 @@ app.post('/api/admin/apps', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
-// Admin — Update App
 app.put('/api/admin/apps/:id', authenticateToken, isAdmin, async (req, res) => {
   const { name, description, icon, color, tech_stack, live_url, github_url, cover_image, status, category } = req.body;
 
@@ -1176,7 +1086,6 @@ app.put('/api/admin/apps/:id', authenticateToken, isAdmin, async (req, res) => {
   }
 });
 
-// Admin — Delete App
 app.delete('/api/admin/apps/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM apps WHERE id = $1', [req.params.id]);
@@ -1195,6 +1104,7 @@ app.get('/', (req, res) => {
     message: 'S7NextTechnologies API Server',
     version: '1.0.0',
     status: 'running',
+    db: 'Supabase PostgreSQL',
     endpoints: {
       auth: '/api/auth/*',
       user: '/api/user/*',
@@ -1214,13 +1124,10 @@ app.listen(PORT, async () => {
   console.log(`
   ╔═══════════════════════════════════════════════════════════╗
   ║                                                           ║
-  ║   🚀 S7NEXTTECHNOLOGIES BACKEND SERVER                   ║
-  ║                                                           ║
-  ║   Server: http://localhost:${PORT}                         ║
-  ║   Status: ✅ Running                                      ║
-  ║                                                           ║
-  ║   Admin: s7nexttechnologies@gmail.com                    ║
-  ║   Password: Hyderabad@APR_49                             ║
+  ║   🚀 S7NEXTTECHNOLOGIES BACKEND SERVER                    ║
+  ║   🗄️  Database: Supabase PostgreSQL                       ║
+  ║   🌐 Port: ${PORT}                                        ║
+  ║   ✅ Status: Running                                      ║
   ║                                                           ║
   ╚═══════════════════════════════════════════════════════════╝
   `);
