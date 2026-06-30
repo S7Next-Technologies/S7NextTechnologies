@@ -672,7 +672,7 @@ export const HeroSection = ({ C, setPage, Btn, offerCards, FeatureCard, SectionH
               padding: '12px' // Creates an elegant glass outer border frame
             }}>
               <video 
-                src="hero-image.mp4" // Ensure this filename matches your local public folder asset location
+                src="public/hero-image.mp4.mp4" // Ensure this filename matches your local public folder asset location
                 autoPlay 
                 loop 
                 muted 
