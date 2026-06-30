@@ -604,14 +604,36 @@ const HomePage = ({ courses, onEnroll, user, setPage }) => {
     },
   ];
 
+export const HeroSection = ({ C, setPage, Btn, offerCards, FeatureCard, SectionHeader, whyCards, WhyCard, courses, onEnroll }) => {
   return (
     <div>
+      {/* Dynamic CSS animations injected directly into the document */}
+      <style>{`
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+        }
+        .animate-fadeUp {
+          animation: fadeUp 1s ease-out forwards;
+        }
+        .animate-float {
+          animation: float 5s ease-in-out infinite;
+        }
+      `}</style>
+
       {/* ── HERO ── */}
       <section style={{ paddingTop: 100, minHeight: '100vh', display: 'flex', alignItems: 'center', background: `linear-gradient(160deg, ${C.indigoXLight} 0%, ${C.white} 60%, ${C.goldXLight} 100%)`, position: 'relative', overflow: 'hidden' }}>
         {/* Background decorative circles */}
         <div style={{ position: 'absolute', top: -80, right: -80, width: 500, height: 500, borderRadius: '50%', background: `radial-gradient(circle, ${C.indigo}12 0%, transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -60, left: -60, width: 400, height: 400, borderRadius: '50%', background: `radial-gradient(circle, ${C.emerald}10 0%, transparent 70%)`, pointerEvents: 'none' }} />
+        
         <div style={{ maxWidth: 1240, margin: '0 auto', padding: '80px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+          
+          {/* Left Column: Typography Content */}
           <div className="animate-fadeUp">
             <h1 style={{ fontFamily: 'Playfair Display', fontSize: 'clamp(36px,5vw,60px)', fontWeight: 900, color: C.textPrimary, lineHeight: 1.15, marginBottom: 24 }}>
               Igniting Careers.{' '}
@@ -625,6 +647,7 @@ const HomePage = ({ courses, onEnroll, user, setPage }) => {
               <Btn variant="primary" style={{ padding: '14px 32px', fontSize: 15 }} onClick={() => setPage('courses')}>🚀 Explore Courses</Btn>
               <Btn variant="outline" style={{ padding: '14px 32px', fontSize: 15 }} onClick={() => setPage('about')}>Learn More →</Btn>
             </div>
+            
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginTop: 44 }}>
               {[['500+', 'Students Trained'], ['50+', 'Partner Companies'], ['95%', 'Placement Rate']].map(([val, lbl]) => (
                 <div key={lbl}>
@@ -634,20 +657,37 @@ const HomePage = ({ courses, onEnroll, user, setPage }) => {
               ))}
             </div>
           </div>
-          {/* Hero Visual */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="animate-float">
-            {[
-              { icon: '🎯', label: 'Placement Focused', color: C.indigo },
-              { icon: '🤝', label: 'Industry Network', color: C.gold },
-              { icon: '💡', label: 'Real Projects', color: C.emerald },
-              { icon: '🏆', label: 'Certified Trainers', color: C.indigo },
-            ].map((item) => (
-              <div key={item.label} style={{ background: C.white, border: `1.5px solid ${C.border}`, borderRadius: 20, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>{item.icon}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: item.color }}>{item.label}</div>
-              </div>
-            ))}
+
+          {/* Right Column: Hero Visual (Video Player with Glassmorphic Floating Frame) */}
+          <div className="animate-float" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+            <div style={{
+              width: '100%',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
+              border: `1px solid rgba(255, 255, 255, 0.4)`,
+              background: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              padding: '12px' // Creates an elegant glass outer border frame
+            }}>
+              <video 
+                src="hero-image.mp4" // Ensure this filename matches your local public folder asset location
+                autoPlay 
+                loop 
+                muted 
+                playsInline
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  borderRadius: '16px',
+                  display: 'block',
+                  objectFit: 'cover'
+                }}
+              />
+            </div>
           </div>
+
         </div>
       </section>
 
